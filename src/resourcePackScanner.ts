@@ -2,6 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+/**
+ * Interface for a resource pack info.
+ */
 export interface ResourcePackInfo {
   path: string;
   name: string;
@@ -9,6 +12,9 @@ export interface ResourcePackInfo {
   textsPath: string;
 }
 
+/**
+ * Interface for a manifest module.
+ */
 interface ManifestModule {
   type: string;
   description?: string;
@@ -16,6 +22,9 @@ interface ManifestModule {
   version?: number[];
 }
 
+/**
+ * Interface for a manifest header.
+ */
 interface ManifestHeader {
   name?: string;
   description?: string;
@@ -24,6 +33,9 @@ interface ManifestHeader {
   min_engine_version?: number[];
 }
 
+/**
+ * Interface for a manifest.
+ */
 interface Manifest {
   format_version?: number;
   header?: ManifestHeader;
@@ -32,20 +44,20 @@ interface Manifest {
 
 /**
  * Checks if a manifest.json file indicates a resource pack
+ * @param manifestPath - The path to the manifest.json file.
+ * @returns True if the manifest.json file indicates a resource pack, false otherwise.
  */
 function isResourcePackManifest(manifestPath: string): boolean {
   try {
     const content = fs.readFileSync(manifestPath, 'utf-8');
-    const manifest: Manifest = JSON.parse(content);
+    const manifest = JSON.parse(content) as Manifest;
 
     if (!manifest.modules || !Array.isArray(manifest.modules)) {
       return false;
     }
 
     // Check if any module has type "resources"
-    return manifest.modules.some(
-      (module) => module.type === 'resources'
-    );
+    return manifest.modules.some(module => module.type === 'resources');
   } catch {
     return false;
   }
@@ -53,12 +65,14 @@ function isResourcePackManifest(manifestPath: string): boolean {
 
 /**
  * Gets the pack name from a manifest
+ * @param manifestPath - The path to the manifest.json file.
+ * @returns The pack name.
  */
 function getPackName(manifestPath: string): string {
   try {
     const content = fs.readFileSync(manifestPath, 'utf-8');
-    const manifest: Manifest = JSON.parse(content);
-    return manifest.header?.name || path.basename(path.dirname(manifestPath));
+    const manifest = JSON.parse(content) as Manifest;
+    return manifest.header?.name ?? path.basename(path.dirname(manifestPath));
   } catch {
     return path.basename(path.dirname(manifestPath));
   }
@@ -66,6 +80,8 @@ function getPackName(manifestPath: string): string {
 
 /**
  * Scans a directory for resource packs (looks for manifest.json at root level)
+ * @param rootPath - The path to the root directory to scan.
+ * @returns An array of resource pack info.
  */
 export function scanForResourcePacks(rootPath: string): ResourcePackInfo[] {
   const resourcePacks: ResourcePackInfo[] = [];
@@ -87,15 +103,13 @@ export function scanForResourcePacks(rootPath: string): ResourcePackInfo[] {
 
 /**
  * Scans all workspace folders for resource packs
+ * @returns An array of resource pack info.
  */
 export function scanWorkspaceForResourcePacks(): ResourcePackInfo[] {
   const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders) {
-    return [];
-  }
+  if (!workspaceFolders) return [];
 
   const allResourcePacks: ResourcePackInfo[] = [];
-
   for (const folder of workspaceFolders) {
     const packs = scanForResourcePacks(folder.uri.fsPath);
     allResourcePacks.push(...packs);
@@ -106,18 +120,19 @@ export function scanWorkspaceForResourcePacks(): ResourcePackInfo[] {
 
 /**
  * Scans additional configured paths for resource packs
+ * @param additionalPaths - The additional paths to scan.
+ * @returns An array of resource pack info.
  */
 export function scanConfiguredPaths(additionalPaths: string[]): ResourcePackInfo[] {
   const resourcePacks: ResourcePackInfo[] = [];
 
   for (const configPath of additionalPaths) {
     // Expand ~ to home directory if present
-    const expandedPath = configPath.replace(/^~/, process.env.HOME || '');
-    
-    if (fs.existsSync(expandedPath)) {
-      const packs = scanForResourcePacks(expandedPath);
-      resourcePacks.push(...packs);
-    }
+    const expandedPath = configPath.replace(/^~/, process.env.HOME ?? '');
+    if (!fs.existsSync(expandedPath)) continue;
+
+    const packs = scanForResourcePacks(expandedPath);
+    resourcePacks.push(...packs);
   }
 
   return resourcePacks;
@@ -125,10 +140,11 @@ export function scanConfiguredPaths(additionalPaths: string[]): ResourcePackInfo
 
 /**
  * Gets all resource packs from workspace and configured paths
+ * @returns An array of resource pack info.
  */
 export function getAllResourcePacks(): ResourcePackInfo[] {
   const config = vscode.workspace.getConfiguration('mcbeTranslateViewer');
-  const additionalPaths = config.get<string[]>('resourcePackPaths') || [];
+  const additionalPaths = config.get<string[]>('resourcePackPaths') ?? [];
 
   const workspacePacks = scanWorkspaceForResourcePacks();
   const configuredPacks = scanConfiguredPaths(additionalPaths);
@@ -136,13 +152,11 @@ export function getAllResourcePacks(): ResourcePackInfo[] {
   // Combine and deduplicate by path
   const allPacks = [...workspacePacks, ...configuredPacks];
   const uniquePacks = new Map<string, ResourcePackInfo>();
-  
+
   for (const pack of allPacks) {
-    if (!uniquePacks.has(pack.path)) {
-      uniquePacks.set(pack.path, pack);
-    }
+    if (uniquePacks.has(pack.path)) continue;
+    uniquePacks.set(pack.path, pack);
   }
 
   return Array.from(uniquePacks.values());
 }
-

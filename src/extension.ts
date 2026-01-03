@@ -3,9 +3,20 @@ import { TranslationManager } from './translationManager';
 import { TranslationHoverProvider } from './hoverProvider';
 import { TranslationDecorationProvider } from './decorationProvider';
 
+/**
+ * Translation manager for the MCBE Translate Viewer extension.
+ */
 let translationManager: TranslationManager;
+/**
+ * Decoration provider for the MCBE Translate Viewer extension.
+ */
 let decorationProvider: TranslationDecorationProvider;
 
+/**
+ * Activates the MCBE Translate Viewer extension.
+ * @param context - The extension context.
+ * @returns A promise that resolves when the extension is activated.
+ */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('MCBE Translate Viewer is activating...');
 
@@ -18,12 +29,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const packs = translationManager.getResourcePacks();
   if (packs.length > 0) {
     console.log(`MCBE Translate Viewer: Found ${packs.length} resource pack(s):`);
-    packs.forEach((pack) => {
-      console.log(`  - ${pack.name} (${pack.path})`);
-    });
-  } else {
-    console.log('MCBE Translate Viewer: No resource packs found in workspace');
-  }
+    packs.forEach(pack => console.log(`  - ${pack.name} (${pack.path})`));
+  } else console.log('MCBE Translate Viewer: No resource packs found in workspace');
 
   // Initialize hover provider for all document types
   const hoverProvider = new TranslationHoverProvider(translationManager);
@@ -37,75 +44,90 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('mcbeTranslateViewer.refreshTranslations', async () => {
-      await translationManager.refresh();
-      decorationProvider.refreshAllEditors();
-      
-      const packs = translationManager.getResourcePacks();
-      const transCount = Object.keys(translationManager.getAllTranslations()).length;
-      vscode.window.showInformationMessage(
-        `MCBE Translate Viewer: Loaded ${transCount} translations from ${packs.length} resource pack(s)`
-      );
+    vscode.commands.registerCommand('mcbeTranslateViewer.refreshTranslations', () => {
+      void translationManager.refresh().then(() => {
+        decorationProvider.refreshAllEditors();
+
+        const packs = translationManager.getResourcePacks();
+        const transCount = Object.keys(translationManager.getAllTranslations()).length;
+        void vscode.window.showInformationMessage(
+          `MCBE Translate Viewer: Loaded ${transCount} translations from ${packs.length} resource pack(s)`
+        );
+      });
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('mcbeTranslateViewer.selectLanguage', async () => {
+    vscode.commands.registerCommand('mcbeTranslateViewer.selectLanguage', () => {
       const languages = translationManager.getAvailableLanguages();
-      
+
       if (languages.length === 0) {
-        vscode.window.showWarningMessage('No languages available. Make sure a resource pack with texts is in the workspace.');
+        void vscode.window.showWarningMessage(
+          'No languages available. Make sure a resource pack with texts is in the workspace.'
+        );
         return;
       }
 
       const currentLang = translationManager.getCurrentLanguage();
-      const items = languages.map((lang) => ({
+      const items = languages.map(lang => ({
         label: lang,
         description: lang === currentLang ? '(current)' : undefined,
       }));
 
-      const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Select translation language',
-      });
+      void vscode.window
+        .showQuickPick(items, {
+          placeHolder: 'Select translation language',
+        })
+        .then(selected => {
+          if (!selected) return;
+          void translationManager.setLanguage(selected.label).then(() => {
+            decorationProvider.refreshAllEditors();
+            void vscode.window.showInformationMessage(
+              `MCBE Translate Viewer: Language set to ${selected.label}`
+            );
+          });
+        });
+    })
+  );
 
-      if (selected) {
-        await translationManager.setLanguage(selected.label);
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'mcbeTranslateViewer.goToTranslation',
+      (args: { filePath: string; line: number }) => {
+        if (!args?.filePath || !args?.line) return;
+
+        void vscode.workspace.openTextDocument(args.filePath).then(
+          document => {
+            void vscode.window.showTextDocument(document).then(editor => {
+              const position = new vscode.Position(args.line - 1, 0);
+              const range = new vscode.Range(position, position);
+
+              editor.selection = new vscode.Selection(position, position);
+              editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+            });
+          },
+          () => {
+            void vscode.window.showErrorMessage(`Could not open file: ${args.filePath}`);
+          }
+        );
+      }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('mcbeTranslateViewer.clearVanillaCache', () => {
+      void translationManager.clearVanillaCache().then(() => {
         decorationProvider.refreshAllEditors();
-        vscode.window.showInformationMessage(`MCBE Translate Viewer: Language set to ${selected.label}`);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('mcbeTranslateViewer.goToTranslation', async (args: { filePath: string; line: number }) => {
-      if (!args?.filePath || !args?.line) return;
-
-      try {
-        const document = await vscode.workspace.openTextDocument(args.filePath);
-        const editor = await vscode.window.showTextDocument(document);
-        
-        const position = new vscode.Position(args.line - 1, 0);
-        const range = new vscode.Range(position, position);
-        
-        editor.selection = new vscode.Selection(position, position);
-        editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-      } catch (error) {
-        vscode.window.showErrorMessage(`Could not open file: ${args.filePath}`);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('mcbeTranslateViewer.clearVanillaCache', async () => {
-      await translationManager.clearVanillaCache();
-      decorationProvider.refreshAllEditors();
-      vscode.window.showInformationMessage('MCBE Translate Viewer: Vanilla translations cache cleared and refreshed');
+        void vscode.window.showInformationMessage(
+          'MCBE Translate Viewer: Vanilla translations cache cleared and refreshed'
+        );
+      });
     })
   );
 
   // Watch for configuration changes
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(async (event) => {
+    vscode.workspace.onDidChangeConfiguration(async event => {
       if (event.affectsConfiguration('mcbeTranslateViewer')) {
         await translationManager.refresh();
         decorationProvider.refreshAllEditors();
@@ -158,4 +180,3 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export function deactivate(): void {
   console.log('MCBE Translate Viewer deactivated');
 }
-

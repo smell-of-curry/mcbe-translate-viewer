@@ -1,10 +1,24 @@
 import * as vscode from 'vscode';
 import { TranslationManager } from './translationManager';
-import { findTranslateKeyAtPosition, TranslateKeyMatch } from './translateKeyFinder';
+import { findTranslateKeyAtPosition } from './translateKeyFinder';
 
+/**
+ * Hover provider for the MCBE Translate Viewer extension.
+ */
 export class TranslationHoverProvider implements vscode.HoverProvider {
+  /**
+   * Constructor for the TranslationHoverProvider.
+   * @param translationManager - The translation manager.
+   */
   constructor(private translationManager: TranslationManager) {}
 
+  /**
+   * Provides a hover for the given document and position.
+   * @param document - The document to provide a hover for.
+   * @param position - The position to provide a hover for.
+   * @param _token - The cancellation token.
+   * @returns A hover for the given document and position.
+   */
   public provideHover(
     document: vscode.TextDocument,
     position: vscode.Position,
@@ -24,31 +38,39 @@ export class TranslationHoverProvider implements vscode.HoverProvider {
       // Header with the key
       markdown.appendMarkdown(`**🌐 Translation** *(${currentLanguage})*\n\n`);
       markdown.appendMarkdown(`---\n\n`);
-      
+
       // The translation value
       markdown.appendMarkdown(`**Key:** \`${match.key}\`\n\n`);
       markdown.appendMarkdown(`**Value:**\n\n`);
-      
+
       // Handle formatting codes in the value (Minecraft uses § for formatting)
       const displayValue = this.formatMinecraftText(translation.value);
       markdown.appendMarkdown(`> ${displayValue}\n\n`);
 
       // Show file location
       markdown.appendMarkdown(`---\n\n`);
-      markdown.appendMarkdown(`*Defined in* \`${translation.filePath}\` *at line ${translation.line}*\n\n`);
+      markdown.appendMarkdown(
+        `*Defined in* \`${translation.filePath}\` *at line ${translation.line}*\n\n`
+      );
 
       // Add command to go to definition
-      const args = encodeURIComponent(JSON.stringify({
-        filePath: translation.filePath,
-        line: translation.line,
-      }));
-      markdown.appendMarkdown(`[$(go-to-file) Go to Definition](command:mcbeTranslateViewer.goToTranslation?${args})`);
+      const args = encodeURIComponent(
+        JSON.stringify({
+          filePath: translation.filePath,
+          line: translation.line,
+        })
+      );
+      markdown.appendMarkdown(
+        `[$(go-to-file) Go to Definition](command:mcbeTranslateViewer.goToTranslation?${args})`
+      );
     } else {
       // Key not found
       markdown.appendMarkdown(`**⚠️ Translation Not Found**\n\n`);
       markdown.appendMarkdown(`---\n\n`);
       markdown.appendMarkdown(`**Key:** \`${match.key}\`\n\n`);
-      markdown.appendMarkdown(`No translation found for this key in \`${currentLanguage}.lang\`\n\n`);
+      markdown.appendMarkdown(
+        `No translation found for this key in \`${currentLanguage}.lang\`\n\n`
+      );
 
       const packs = this.translationManager.getResourcePacks();
       if (packs.length === 0) {
@@ -76,4 +98,3 @@ export class TranslationHoverProvider implements vscode.HoverProvider {
     return text.replace(/§[0-9a-fk-or]/gi, '');
   }
 }
-

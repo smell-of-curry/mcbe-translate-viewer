@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * Interface for a translation entry.
+ */
 export interface TranslationEntry {
   key: string;
   value: string;
@@ -8,18 +11,24 @@ export interface TranslationEntry {
   filePath: string;
 }
 
+/**
+ * Interface for a translation map.
+ */
 export interface TranslationMap {
   [key: string]: TranslationEntry;
 }
 
 /**
  * Parses a Minecraft Bedrock .lang file and returns a map of translation keys to values.
- * 
+ *
  * .lang file format:
  * - Lines starting with ## are comments
  * - Empty lines are ignored
  * - Format: key=value
  * - Keys can contain dots, underscores, and other characters
+ *
+ * @param filePath - The path to the .lang file.
+ * @returns A map of translation keys to values.
  */
 export function parseLangFile(filePath: string): TranslationMap {
   if (!fs.existsSync(filePath)) {
@@ -32,7 +41,7 @@ export function parseLangFile(filePath: string): TranslationMap {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    
+
     // Skip empty lines and comments
     if (!line || line.startsWith('##') || line.startsWith('#')) {
       continue;
@@ -84,6 +93,9 @@ export function findAvailableLanguages(textsDir: string): string[] {
 
 /**
  * Gets the path to a specific language file
+ * @param textsDir - The path to the texts directory.
+ * @param language - The language code.
+ * @returns The path to the specific language file.
  */
 export function getLangFilePath(textsDir: string, language: string): string {
   return path.join(textsDir, `${language}.lang`);
@@ -91,10 +103,12 @@ export function getLangFilePath(textsDir: string, language: string): string {
 
 /**
  * Loads translations for a specific language from a resource pack
+ * @param resourcePackPath - The path to the resource pack.
+ * @param language - The language code.
+ * @returns A map of translation keys to values.
  */
 export function loadTranslations(resourcePackPath: string, language: string): TranslationMap {
   const textsDir = path.join(resourcePackPath, 'texts');
   const langFilePath = getLangFilePath(textsDir, language);
   return parseLangFile(langFilePath);
 }
-

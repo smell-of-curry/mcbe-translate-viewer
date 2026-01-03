@@ -4,9 +4,20 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { TranslationMap } from './langParser';
 
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/ZtechNetwork/MCBVanillaResourcePack/master/texts';
+/**
+ * The base URL for the vanilla translations.
+ */
+const GITHUB_RAW_BASE =
+  'https://raw.githubusercontent.com/ZtechNetwork/MCBVanillaResourcePack/master/texts';
+
+/**
+ * The duration of the cache in hours.
+ */
 const CACHE_DURATION_HOURS = 24;
 
+/**
+ * Interface for cache metadata.
+ */
 interface CacheMetadata {
   fetchedAt: number;
   version: string;
@@ -14,36 +25,45 @@ interface CacheMetadata {
 
 /**
  * Fetches content from a URL using https
+ * @param url - The URL to fetch content from.
+ * @returns A promise that resolves to the content of the URL.
  */
 function fetchUrl(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    https.get(url, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        const redirectUrl = response.headers.location;
-        if (!redirectUrl) {
-          reject(new Error('Redirect without location header'));
+    https
+      .get(url, response => {
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          const redirectUrl = response.headers.location;
+          if (!redirectUrl) {
+            reject(new Error('Redirect without location header'));
+            return;
+          }
+          fetchUrl(redirectUrl).then(resolve).catch(reject);
           return;
         }
-        fetchUrl(redirectUrl).then(resolve).catch(reject);
-        return;
-      }
 
-      if (response.statusCode !== 200) {
-        reject(new Error(`HTTP ${response.statusCode}: Failed to fetch ${url}`));
-        return;
-      }
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: Failed to fetch ${url}`));
+          return;
+        }
 
-      let data = '';
-      response.on('data', (chunk) => { data += chunk; });
-      response.on('end', () => resolve(data));
-      response.on('error', reject);
-    }).on('error', reject);
+        let data = '';
+        response.on('data', chunk => {
+          data += chunk;
+        });
+        response.on('end', () => resolve(data));
+        response.on('error', reject);
+      })
+      .on('error', reject);
   });
 }
 
 /**
  * Parses .lang file content (string) into a TranslationMap
  * Note: filePath is set to 'vanilla' to indicate these are vanilla translations
+ * @param content - The content of the .lang file.
+ * @param language - The language of the translations.
+ * @returns A TranslationMap of the translations.
  */
 function parseLangContent(content: string, language: string): TranslationMap {
   const lines = content.split('\n');
@@ -53,71 +73,90 @@ function parseLangContent(content: string, language: string): TranslationMap {
     const line = lines[i].trim();
 
     // Skip empty lines and comments
-    if (!line || line.startsWith('##') || line.startsWith('#')) {
-      continue;
-    }
+    if (!line || line.startsWith('##') || line.startsWith('#')) continue;
 
     // Find the first = sign (keys can't contain =, but values can)
     const equalIndex = line.indexOf('=');
-    if (equalIndex === -1) {
-      continue;
-    }
+    if (equalIndex === -1) continue;
 
     const key = line.substring(0, equalIndex);
+    if (!key) continue;
     const value = line.substring(equalIndex + 1);
 
-    if (key) {
-      translations[key] = {
-        key,
-        value,
-        line: i + 1,
-        filePath: `vanilla:${language}`,
-      };
-    }
+    translations[key] = {
+      key,
+      value,
+      line: i + 1,
+      filePath: `vanilla:${language}`,
+    };
   }
 
   return translations;
 }
 
+/**
+ * The vanilla translation provider.
+ */
 export class VanillaTranslationProvider {
   private cacheDir: string;
   private enabled: boolean = true;
 
+  /**
+   * Constructor for the VanillaTranslationProvider.
+   * @param globalStoragePath - The path to the global storage.
+   */
   constructor(globalStoragePath: string) {
     this.cacheDir = path.join(globalStoragePath, 'vanilla-translations');
     this.ensureCacheDir();
     this.loadConfiguration();
   }
 
+  /**
+   * Loads the configuration for the vanilla translation provider.
+   */
   private loadConfiguration(): void {
     const config = vscode.workspace.getConfiguration('mcbeTranslateViewer');
     this.enabled = config.get<boolean>('useVanillaTranslations') ?? true;
   }
 
+  /**
+   * Ensures the cache directory exists.
+   */
   private ensureCacheDir(): void {
-    if (!fs.existsSync(this.cacheDir)) {
-      fs.mkdirSync(this.cacheDir, { recursive: true });
-    }
+    if (fs.existsSync(this.cacheDir)) return;
+    fs.mkdirSync(this.cacheDir, { recursive: true });
   }
 
+  /**
+   * Gets the cache path for a language.
+   * @param language - The language of the translations.
+   * @returns The cache path for the language.
+   */
   private getCachePath(language: string): string {
     return path.join(this.cacheDir, `${language}.lang`);
   }
 
+  /**
+   * Gets the metadata path for a language.
+   * @param language - The language of the translations.
+   * @returns The metadata path for the language.
+   */
   private getMetadataPath(language: string): string {
     return path.join(this.cacheDir, `${language}.meta.json`);
   }
 
+  /**
+   * Checks if the cache is valid for a language.
+   * @param language - The language of the translations.
+   * @returns True if the cache is valid, false otherwise.
+   */
   private isCacheValid(language: string): boolean {
     const metaPath = this.getMetadataPath(language);
     const cachePath = this.getCachePath(language);
-
-    if (!fs.existsSync(metaPath) || !fs.existsSync(cachePath)) {
-      return false;
-    }
+    if (!fs.existsSync(metaPath) || !fs.existsSync(cachePath)) return false;
 
     try {
-      const metadata: CacheMetadata = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      const metadata = JSON.parse(fs.readFileSync(metaPath, 'utf-8')) as CacheMetadata;
       const ageHours = (Date.now() - metadata.fetchedAt) / (1000 * 60 * 60);
       return ageHours < CACHE_DURATION_HOURS;
     } catch {
@@ -125,11 +164,14 @@ export class VanillaTranslationProvider {
     }
   }
 
+  /**
+   * Reads the cache for a language.
+   * @param language - The language of the translations.
+   * @returns The cache for the language.
+   */
   private readFromCache(language: string): string | null {
     const cachePath = this.getCachePath(language);
-    if (!fs.existsSync(cachePath)) {
-      return null;
-    }
+    if (!fs.existsSync(cachePath)) return null;
 
     try {
       return fs.readFileSync(cachePath, 'utf-8');
@@ -138,46 +180,86 @@ export class VanillaTranslationProvider {
     }
   }
 
+  /**
+   * Writes the cache for a language.
+   * @param language - The language of the translations.
+   * @param content - The content of the translations.
+   */
   private writeToCache(language: string, content: string): void {
     const cachePath = this.getCachePath(language);
     const metaPath = this.getMetadataPath(language);
 
     fs.writeFileSync(cachePath, content, 'utf-8');
-    fs.writeFileSync(metaPath, JSON.stringify({
-      fetchedAt: Date.now(),
-      version: '1.0',
-    } satisfies CacheMetadata), 'utf-8');
+    fs.writeFileSync(
+      metaPath,
+      JSON.stringify({
+        fetchedAt: Date.now(),
+        version: '1.0',
+      } satisfies CacheMetadata),
+      'utf-8'
+    );
   }
 
   /**
    * Fetches available languages from the vanilla resource pack
+   * @returns An array of available languages.
    */
-  public async getAvailableLanguages(): Promise<string[]> {
+  public getAvailableLanguages(): string[] {
     // Common MCBE languages - we can't easily list the directory from GitHub raw
     // So we return the most common ones
     return [
-      'en_US', 'en_GB', 'de_DE', 'es_ES', 'es_MX', 'fr_FR', 'fr_CA',
-      'it_IT', 'ja_JP', 'ko_KR', 'nl_NL', 'pl_PL', 'pt_BR', 'pt_PT',
-      'ru_RU', 'zh_CN', 'zh_TW', 'tr_TR', 'uk_UA', 'ar_SA', 'bg_BG',
-      'cs_CZ', 'da_DK', 'el_GR', 'fi_FI', 'hu_HU', 'id_ID', 'nb_NO',
-      'ro_RO', 'sk_SK', 'sv_SE', 'th_TH', 'vi_VN'
+      'en_US',
+      'en_GB',
+      'de_DE',
+      'es_ES',
+      'es_MX',
+      'fr_FR',
+      'fr_CA',
+      'it_IT',
+      'ja_JP',
+      'ko_KR',
+      'nl_NL',
+      'pl_PL',
+      'pt_BR',
+      'pt_PT',
+      'ru_RU',
+      'zh_CN',
+      'zh_TW',
+      'tr_TR',
+      'uk_UA',
+      'ar_SA',
+      'bg_BG',
+      'cs_CZ',
+      'da_DK',
+      'el_GR',
+      'fi_FI',
+      'hu_HU',
+      'id_ID',
+      'nb_NO',
+      'ro_RO',
+      'sk_SK',
+      'sv_SE',
+      'th_TH',
+      'vi_VN',
     ];
   }
 
   /**
    * Loads vanilla translations for a specific language
    * First checks cache, then fetches from GitHub if needed
+   * @param language - The language of the translations.
+   * @returns A TranslationMap of the translations.
    */
   public async loadTranslations(language: string): Promise<TranslationMap> {
-    if (!this.enabled) {
-      return {};
-    }
+    if (!this.enabled) return {};
 
     // Check cache first
     if (this.isCacheValid(language)) {
       const cached = this.readFromCache(language);
       if (cached) {
-        console.log(`MCBE Translate Viewer: Loaded vanilla translations for ${language} from cache`);
+        console.log(
+          `MCBE Translate Viewer: Loaded vanilla translations for ${language} from cache`
+        );
         return parseLangContent(cached, language);
       }
     }
@@ -192,7 +274,10 @@ export class VanillaTranslationProvider {
       console.log(`MCBE Translate Viewer: Fetched and cached vanilla translations for ${language}`);
       return parseLangContent(content, language);
     } catch (error) {
-      console.warn(`MCBE Translate Viewer: Could not fetch vanilla translations for ${language}:`, error);
+      console.warn(
+        `MCBE Translate Viewer: Could not fetch vanilla translations for ${language}:`,
+        error
+      );
 
       // Try to use stale cache if available
       const staleCache = this.readFromCache(language);
@@ -216,27 +301,34 @@ export class VanillaTranslationProvider {
       if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
     } else {
       // Clear all
-      if (fs.existsSync(this.cacheDir)) {
-        const files = fs.readdirSync(this.cacheDir);
-        for (const file of files) {
-          fs.unlinkSync(path.join(this.cacheDir, file));
-        }
-      }
+      if (!fs.existsSync(this.cacheDir)) return;
+      const files = fs.readdirSync(this.cacheDir);
+      for (const file of files) fs.unlinkSync(path.join(this.cacheDir, file));
     }
   }
 
   /**
    * Forces a refresh of vanilla translations by clearing cache and re-fetching
+   * @param language - The language of the translations.
+   * @returns A TranslationMap of the translations.
    */
   public async forceRefresh(language: string): Promise<TranslationMap> {
     this.clearCache(language);
     return this.loadTranslations(language);
   }
 
+  /**
+   * Checks if vanilla translations are enabled.
+   * @returns True if vanilla translations are enabled, false otherwise.
+   */
   public isEnabled(): boolean {
     return this.enabled;
   }
 
+  /**
+   * Sets the enabled state of vanilla translations.
+   * @param enabled - The enabled state of vanilla translations.
+   */
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
   }

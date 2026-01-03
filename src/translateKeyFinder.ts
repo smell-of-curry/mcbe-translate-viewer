@@ -11,7 +11,7 @@ export interface TranslateKeyMatch {
 
 /**
  * Patterns to match translate keys in code
- * 
+ *
  * Supports various patterns:
  * - translate: 'key'
  * - translate: "key"
@@ -36,13 +36,12 @@ export function findAllTranslateKeys(document: vscode.TextDocument): TranslateKe
   for (const pattern of TRANSLATE_PATTERNS) {
     // Reset the regex lastIndex
     pattern.lastIndex = 0;
-    
+
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(text)) !== null) {
       const fullMatch = match[0];
       // The key is in different capture groups depending on the pattern
       const key = match[2] || match[1];
-      
       if (!key) continue;
 
       // Find the position of the key in the full match
@@ -81,12 +80,10 @@ export function findTranslateKeyAtPosition(
   position: vscode.Position
 ): TranslateKeyMatch | null {
   const allMatches = findAllTranslateKeys(document);
-  
+
   for (const match of allMatches) {
     if (match.line !== position.line) continue;
-    if (position.character >= match.startCol && position.character <= match.endCol) {
-      return match;
-    }
+    if (position.character >= match.startCol && position.character <= match.endCol) return match;
   }
 
   return null;
@@ -94,6 +91,8 @@ export function findTranslateKeyAtPosition(
 
 /**
  * Gets the range of a translate key match
+ * @param match - The translate key match.
+ * @returns The range of the translate key match.
  */
 export function getMatchRange(match: TranslateKeyMatch): vscode.Range {
   return new vscode.Range(
@@ -101,4 +100,3 @@ export function getMatchRange(match: TranslateKeyMatch): vscode.Range {
     new vscode.Position(match.line, match.endCol)
   );
 }
-

@@ -53,7 +53,10 @@
         },
         "mcbeTranslateViewer.decorationStyle": {
           "type": "string",
-          "enum": ["inline", "after"],
+          "enum": [
+            "inline",
+            "after"
+          ],
           "default": "after",
           "description": "Where to show translation decorations: 'inline' replaces the key, 'after' shows it after the key"
         },
@@ -94,6 +97,10 @@
     "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
     "pretest": "npm run compile",
     "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "check": "npm run lint && npm run format:check",
     "package": "vsce package"
   },
   "devDependencies": {
@@ -103,7 +110,8 @@
     "@typescript-eslint/parser": "^6.13.0",
     "esbuild": "^0.19.8",
     "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.0",
     "typescript": "^5.3.2"
   }
 }
-

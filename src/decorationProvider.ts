@@ -2,9 +2,21 @@ import * as vscode from 'vscode';
 import { TranslationManager } from './translationManager';
 import { findAllTranslateKeys, getMatchRange } from './translateKeyFinder';
 
+/**
+ * Decoration provider for the MCBE Translate Viewer extension.
+ */
 export class TranslationDecorationProvider {
+  /**
+   * Decoration type for the inline translations.
+   */
   private decorationType: vscode.TextEditorDecorationType;
+  /**
+   * Decoration type for the missing translations.
+   */
   private missingDecorationType: vscode.TextEditorDecorationType;
+  /**
+   * Disposables for the decoration provider.
+   */
   private disposables: vscode.Disposable[] = [];
 
   constructor(private translationManager: TranslationManager) {
@@ -31,14 +43,15 @@ export class TranslationDecorationProvider {
 
     // Subscribe to events
     this.disposables.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
+      vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) this.updateDecorations(editor);
       }),
-      vscode.workspace.onDidChangeTextDocument((event) => {
+      vscode.workspace.onDidChangeTextDocument(event => {
         const editor = vscode.window.activeTextEditor;
-        if (editor && event.document === editor.document) {
-          this.updateDecorations(editor);
-        }
+        if (!editor) return;
+        if (event.document !== editor.document) return;
+
+        this.updateDecorations(editor);
       }),
       translationManager.onDidChangeTranslations(() => {
         const editor = vscode.window.activeTextEditor;
@@ -47,9 +60,7 @@ export class TranslationDecorationProvider {
     );
 
     // Initial decoration update
-    if (vscode.window.activeTextEditor) {
-      this.updateDecorations(vscode.window.activeTextEditor);
-    }
+    if (vscode.window.activeTextEditor) this.updateDecorations(vscode.window.activeTextEditor);
   }
 
   /**
@@ -115,15 +126,15 @@ export class TranslationDecorationProvider {
    * Triggers a refresh of all visible editors
    */
   public refreshAllEditors(): void {
-    for (const editor of vscode.window.visibleTextEditors) {
-      this.updateDecorations(editor);
-    }
+    for (const editor of vscode.window.visibleTextEditors) this.updateDecorations(editor);
   }
 
+  /**
+   * Disposes of the decoration provider
+   */
   public dispose(): void {
     this.decorationType.dispose();
     this.missingDecorationType.dispose();
-    this.disposables.forEach((d) => d.dispose());
+    for (const d of this.disposables) d.dispose();
   }
 }
-
