@@ -2,6 +2,8 @@
 
 A VS Code / Cursor extension that displays Minecraft Bedrock Edition translation strings inline in your code. Automatically detects resource packs in your workspace and shows the actual translated text for translate keys.
 
+![Screenshot](./public/Screenshot_2026-01-03_at_12.30.07_PM.png)
+
 ## Features
 
 ### 🔍 Inline Translation Preview
