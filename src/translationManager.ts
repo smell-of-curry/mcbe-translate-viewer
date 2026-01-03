@@ -177,5 +177,3 @@ export class TranslationManager {
     this.onDidChangeTranslationsEmitter.dispose();
   }
 }
-
-s
