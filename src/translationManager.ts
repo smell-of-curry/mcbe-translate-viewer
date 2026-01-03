@@ -1,18 +1,27 @@
 import * as vscode from 'vscode';
 import { TranslationMap, TranslationEntry, loadTranslations, findAvailableLanguages, parseLangFile, getLangFilePath } from './langParser';
 import { getAllResourcePacks, ResourcePackInfo } from './resourcePackScanner';
+import { VanillaTranslationProvider } from './vanillaTranslations';
 
 export class TranslationManager {
   private translations: TranslationMap = {};
   private currentLanguage: string = 'en_US';
   private resourcePacks: ResourcePackInfo[] = [];
   private availableLanguages: string[] = [];
+  private vanillaProvider: VanillaTranslationProvider | null = null;
   
   private readonly onDidChangeTranslationsEmitter = new vscode.EventEmitter<void>();
   public readonly onDidChangeTranslations = this.onDidChangeTranslationsEmitter.event;
 
   constructor() {
     this.loadConfiguration();
+  }
+
+  /**
+   * Initializes the vanilla translation provider with extension storage path
+   */
+  public initVanillaProvider(globalStoragePath: string): void {
+    this.vanillaProvider = new VanillaTranslationProvider(globalStoragePath);
   }
 
   /**
@@ -25,6 +34,7 @@ export class TranslationManager {
 
   /**
    * Refreshes the translation data by rescanning resource packs
+   * Loads vanilla translations first, then layers user translations on top
    */
   public async refresh(): Promise<void> {
     this.loadConfiguration();
@@ -34,6 +44,23 @@ export class TranslationManager {
 
     const allLanguages = new Set<string>();
 
+    // Load vanilla translations first (these serve as the base/default)
+    if (this.vanillaProvider) {
+      try {
+        const vanillaTranslations = await this.vanillaProvider.loadTranslations(this.currentLanguage);
+        this.translations = { ...vanillaTranslations };
+        
+        // Add vanilla available languages
+        const vanillaLanguages = await this.vanillaProvider.getAvailableLanguages();
+        vanillaLanguages.forEach((lang) => allLanguages.add(lang));
+        
+        console.log(`MCBE Translate Viewer: Loaded ${Object.keys(vanillaTranslations).length} vanilla translations`);
+      } catch (error) {
+        console.warn('MCBE Translate Viewer: Failed to load vanilla translations:', error);
+      }
+    }
+
+    // Load user resource pack translations (these override vanilla)
     for (const pack of this.resourcePacks) {
       if (!pack.hasTexts) continue;
 
@@ -44,7 +71,7 @@ export class TranslationManager {
       // Load translations for the current language
       const packTranslations = loadTranslations(pack.path, this.currentLanguage);
       
-      // Merge translations (later packs override earlier ones)
+      // Merge translations (user packs override vanilla and earlier packs)
       this.translations = { ...this.translations, ...packTranslations };
     }
 
@@ -129,8 +156,26 @@ export class TranslationManager {
     return results;
   }
 
+  /**
+   * Clears the vanilla translations cache and forces a re-fetch
+   */
+  public async clearVanillaCache(): Promise<void> {
+    if (this.vanillaProvider) {
+      this.vanillaProvider.clearCache();
+      await this.refresh();
+    }
+  }
+
+  /**
+   * Checks if vanilla translations are enabled
+   */
+  public isVanillaEnabled(): boolean {
+    return this.vanillaProvider?.isEnabled() ?? false;
+  }
+
   public dispose(): void {
     this.onDidChangeTranslationsEmitter.dispose();
   }
 }
 
+s

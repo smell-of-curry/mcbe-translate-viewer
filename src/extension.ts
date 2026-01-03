@@ -9,8 +9,9 @@ let decorationProvider: TranslationDecorationProvider;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('MCBE Translate Viewer is activating...');
 
-  // Initialize the translation manager
+  // Initialize the translation manager with vanilla translations support
   translationManager = new TranslationManager();
+  translationManager.initVanillaProvider(context.globalStorageUri.fsPath);
   await translationManager.refresh();
 
   // Log discovered resource packs
@@ -94,6 +95,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('mcbeTranslateViewer.clearVanillaCache', async () => {
+      await translationManager.clearVanillaCache();
+      decorationProvider.refreshAllEditors();
+      vscode.window.showInformationMessage('MCBE Translate Viewer: Vanilla translations cache cleared and refreshed');
+    })
+  );
+
   // Watch for configuration changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (event) => {
@@ -136,8 +145,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Show status message
   const transCount = Object.keys(translationManager.getAllTranslations()).length;
   if (transCount > 0) {
+    const vanillaStatus = translationManager.isVanillaEnabled() ? ' + vanilla' : '';
     vscode.window.setStatusBarMessage(
-      `$(globe) MCBE: ${transCount} translations loaded (${translationManager.getCurrentLanguage()})`,
+      `$(globe) MCBE: ${transCount} translations loaded (${translationManager.getCurrentLanguage()}${vanillaStatus})`,
       5000
     );
   }

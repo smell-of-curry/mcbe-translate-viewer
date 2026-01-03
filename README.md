@@ -26,6 +26,9 @@ Keys without translations are highlighted so you can easily spot missing transla
 ### 🌐 Multi-language Support
 Switch between different language files (en_US, es_ES, de_DE, etc.) to preview translations in different languages.
 
+### 📦 Vanilla Translations Built-in
+Automatically includes vanilla Minecraft Bedrock Edition translations from the [official resource pack](https://github.com/ZtechNetwork/MCBVanillaResourcePack). Your resource pack translations override the vanilla defaults, giving you access to all base game translations out of the box.
+
 ## How It Works
 
 1. **Resource Pack Detection**: The extension scans workspace folders for Minecraft Bedrock resource packs by looking for `manifest.json` files with a `"type": "resources"` module.
@@ -63,7 +66,10 @@ Configure the extension in your VS Code settings (`.vscode/settings.json`):
   "mcbeTranslateViewer.inlineMaxLength": 60,
 
   // Highlight translate keys without translations (default: true)
-  "mcbeTranslateViewer.highlightMissingTranslations": true
+  "mcbeTranslateViewer.highlightMissingTranslations": true,
+
+  // Include vanilla MCBE translations as defaults (default: true)
+  "mcbeTranslateViewer.useVanillaTranslations": true
 }
 ```
 
@@ -72,6 +78,7 @@ Configure the extension in your VS Code settings (`.vscode/settings.json`):
 - **MCBE: Refresh Translations** - Manually refresh the translation cache
 - **MCBE: Select Translation Language** - Switch between available languages
 - **MCBE: Go to Translation Definition** - Jump to the translation in the .lang file
+- **MCBE: Clear Vanilla Translations Cache** - Clear cached vanilla translations and re-fetch from GitHub
 
 ## Requirements
 

@@ -61,6 +61,11 @@
           "type": "boolean",
           "default": true,
           "description": "Highlight translate keys that don't have a translation value"
+        },
+        "mcbeTranslateViewer.useVanillaTranslations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include vanilla Minecraft Bedrock Edition translations as defaults. Your resource pack translations will override these."
         }
       }
     },
@@ -76,6 +81,10 @@
       {
         "command": "mcbeTranslateViewer.goToTranslation",
         "title": "MCBE: Go to Translation Definition"
+      },
+      {
+        "command": "mcbeTranslateViewer.clearVanillaCache",
+        "title": "MCBE: Clear Vanilla Translations Cache"
       }
     ]
   },
