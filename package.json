@@ -1,0 +1,100 @@
+{
+  "name": "mcbe-translate-viewer",
+  "displayName": "MCBE Translate Viewer",
+  "description": "View Minecraft Bedrock Edition translation strings inline in your code. Automatically detects resource packs and overlays translate key values.",
+  "version": "0.1.0",
+  "publisher": "pokebedrock",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "minecraft",
+    "bedrock",
+    "mcbe",
+    "translate",
+    "localization",
+    "i18n",
+    "resource pack"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/manifest.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "MCBE Translate Viewer",
+      "properties": {
+        "mcbeTranslateViewer.defaultLanguage": {
+          "type": "string",
+          "default": "en_US",
+          "description": "Default language file to use for translations (e.g., en_US, es_ES, de_DE)"
+        },
+        "mcbeTranslateViewer.resourcePackPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional paths to resource packs for translation lookups. Useful when resource packs are not in the workspace."
+        },
+        "mcbeTranslateViewer.showInlineTranslations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline decorations with translation values"
+        },
+        "mcbeTranslateViewer.inlineMaxLength": {
+          "type": "number",
+          "default": 60,
+          "description": "Maximum length of inline translation preview before truncating"
+        },
+        "mcbeTranslateViewer.decorationStyle": {
+          "type": "string",
+          "enum": ["inline", "after"],
+          "default": "after",
+          "description": "Where to show translation decorations: 'inline' replaces the key, 'after' shows it after the key"
+        },
+        "mcbeTranslateViewer.highlightMissingTranslations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight translate keys that don't have a translation value"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "mcbeTranslateViewer.refreshTranslations",
+        "title": "MCBE: Refresh Translations"
+      },
+      {
+        "command": "mcbeTranslateViewer.selectLanguage",
+        "title": "MCBE: Select Translation Language"
+      },
+      {
+        "command": "mcbeTranslateViewer.goToTranslation",
+        "title": "MCBE: Go to Translation Definition"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "esbuild": "^0.19.8",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.2"
+  }
+}
+
