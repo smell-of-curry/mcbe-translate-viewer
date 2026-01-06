@@ -3,7 +3,8 @@
   "displayName": "MCBE Translate Viewer",
   "description": "View Minecraft Bedrock Edition translation strings inline in your code. Automatically detects resource packs and overlays translate key values.",
   "version": "0.1.0",
-  "publisher": "pokebedrock",
+  "publisher": "smell-of-curry",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -23,6 +24,10 @@
   "activationEvents": [
     "workspaceContains:**/manifest.json"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smell-of-curry/mcbe-translate-viewer"
+  },
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {

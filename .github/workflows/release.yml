@@ -1,0 +1,33 @@
+name: Release VSIX
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run compile
+      - run: npm run package
+
+      - run: npx ovsx publish -p ${{ secrets.OVSX_TOKEN }}
+      #- run: npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}
+
+      - name: Create GitHub Release + upload VSIX
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.vsix'
+          generate_release_notes: true
